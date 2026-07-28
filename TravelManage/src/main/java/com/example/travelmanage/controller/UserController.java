@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects; // 新增导入
 
 @RestController
 @RequestMapping("/api/auth")
@@ -34,13 +35,21 @@ public class UserController {
             return map;
         }
 
+        // 新增：密码非空校验
+        if (user.getPassword() == null || u.getPassword() == null) {
+            map.put("code", 0);
+            map.put("msg", "密码不能为空");
+            return map;
+        }
+
         if (!passwordEncoder.matches(user.getPassword(), u.getPassword())) {
             map.put("code", 0);
             map.put("msg", "密码错误");
             return map;
         }
 
-        if (!user.getRole().equals(u.getRole())) {
+        // 修复：使用 Objects.equals 避免空指针
+        if (!Objects.equals(user.getRole(), u.getRole())) {
             map.put("code", 0);
             map.put("msg", "身份选择错误");
             return map;
@@ -66,7 +75,7 @@ public class UserController {
         return map;
     }
 
-    // 注册（你原来的，保持不变）
+    // 注册
     @PostMapping("/register")
     public Map<String, Object> register(@RequestBody User user) {
         Map<String, Object> map = new HashMap<>();
@@ -89,6 +98,12 @@ public class UserController {
         if (!user.getPhone().matches("^1[3-9]\\d{9}$")) {
             map.put("code", 0);
             map.put("msg", "手机号格式不正确");
+            return map;
+        }
+        // 新增：身份非空校验
+        if (user.getRole() == null || user.getRole().trim().isEmpty()) {
+            map.put("code", 0);
+            map.put("msg", "身份不能为空");
             return map;
         }
 

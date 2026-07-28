@@ -90,7 +90,8 @@ const handleRegister = async () => {
     const res = await axios.post('http://localhost:8080/api/auth/register', {
       username: registerForm.username,
       password: registerForm.password,
-      phone: registerForm.phone // 新增手机号参数
+      phone: registerForm.phone ,// 新增手机号参数
+      role: 'user'
     })
     if (res.data.code === 1) {
       ElMessage.success('注册成功，请登录')

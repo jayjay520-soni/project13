@@ -76,9 +76,7 @@
           <el-button type="text" size="small" @click="showEditDialog(row)">
             <el-icon><Setting /></el-icon>
           </el-button>
-          <el-button type="text" size="small" @click="handleDelete(row.id)" danger>
-            删除
-          </el-button>
+
         </template>
       </el-table-column>
     </el-table>
@@ -197,9 +195,9 @@ const getScenicList = async () => {
     const res = await axios.get('/admin/scenic/list', { params })
 
     if (res.data.code === 1) {
-      // ✅ 修复这里！！！
-      scenicList.value = res.data.data.records
-      total.value = res.data.data.total
+      // 👉 这里是关键修复
+      scenicList.value = res.data.data
+      total.value = res.data.total
     }
   } catch (err) {
     ElMessage.error('加载失败：' + err.message)
