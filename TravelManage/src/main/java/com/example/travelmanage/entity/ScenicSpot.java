@@ -1,21 +1,17 @@
 package com.example.travelmanage.entity;
 
 import lombok.Data;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 public class ScenicSpot {
     private Integer id;
-    private String name;          // 景点名称
-    private BigDecimal price;     // 票价
-    private String address;       // 所在地
-    private String region;        // 地区（如：江苏-南京-玄武区）
-    private Double popularity;    // 热度（0-1）
-    private String level;         // 等级（如：5A景区）
-    private Integer visitCount;   // 游量
-    private String imageUrl;      // 图片路径
-    private String history;       // 文化历史
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
+    private String name;
+    private Double price;
+    private String address;   // 改为 address
+    private String region;
+    private Double popularity;// 改为 popularity
+    private String level;
+    private Integer visitCount;
+    private String imageUrl;  // 改为 imageUrl（对应 image_url）
+    private String history;   // 数据库如果没有这个字段，可先注释掉
 }

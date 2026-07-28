@@ -1,4 +1,3 @@
-// router/index.js ✅ 正确配置
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
@@ -9,24 +8,27 @@ import ScenicManage from '@/views/admin/ScenicManage.vue'
 
 const routes = [
     { path: '/', redirect: '/login' },
-    { path: '/login', name: 'Login', component: Login },
-    { path: '/register', name: 'Register', component: Register },
+    { path: '/login', component: Login },
+    { path: '/register', component: Register },
+
+    // 用户端只保留主页，不再跳转子页面
     {
         path: '/user',
-        name: 'UserHome',
         component: UserHome,
         meta: { requiresAuth: true, role: 'user' }
     },
-    // ✅ 只定义一次 /admin，所有子页面都放在 children 里
+
+    // 管理员端
     {
         path: '/admin',
-        name: 'AdminHome',
         component: AdminHome,
         meta: { requiresAuth: true, role: 'admin' },
         children: [
-            { path: 'user', component: UserManage },   // 用户管理（子路由）
-            { path: 'scenic', component: ScenicManage } // 景区管理（子路由）
-            // 后续可添加民宿/餐厅/评论管理等
+            { path: '', redirect: 'user' },
+            { path: 'user', component: UserManage },
+            { path: 'scenic', component: ScenicManage },
+            { path: 'restaurant', component: () => import('@/views/admin/RestaurantManage.vue') },
+            { path: 'homestay', component: () => import('@/views/admin/HomestayManage.vue') }
         ]
     }
 ]
@@ -36,13 +38,12 @@ const router = createRouter({
     routes
 })
 
-// 路由守卫（不变）
 router.beforeEach((to, from, next) => {
     const userRole = localStorage.getItem('userRole')
     if (to.meta.requiresAuth && !userRole) {
         next('/login')
     } else if (to.meta.role && userRole !== to.meta.role) {
-        next('/403')
+        next('/login')
     } else {
         next()
     }

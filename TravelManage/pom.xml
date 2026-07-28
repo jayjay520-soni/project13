@@ -57,6 +57,19 @@
             <scope>runtime</scope>
         </dependency>
 
+            <!-- 测试依赖 -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-test</artifactId>
+                <scope>test</scope>
+            </dependency>
+
+        <!-- MyBatis-Plus 依赖（用于 @TableName、@TableId 等注解） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
+            <version>3.5.3</version>
+        </dependency>
     </dependencies>
 
     <build>

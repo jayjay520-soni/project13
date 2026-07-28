@@ -1,64 +1,102 @@
 <template>
   <div class="scenic-manage">
-    <!-- 顶部操作栏 -->
-    <div class="top-bar" style="margin-bottom: 16px; display: flex; gap: 10px;">
-      <el-button type="primary" size="small" @click="showAddDialog">新增</el-button>
-      <el-button type="danger" size="small" @click="batchDelete">删除</el-button>
+    <h2>景区管理</h2>
+
+    <!-- 🔍 搜索 + 筛选栏 -->
+    <div class="search-bar" style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center">
+      <el-input v-model="searchParams.name" placeholder="搜索景点名称" clearable style="width: 240px" />
+
+      <el-select v-model="searchParams.region" placeholder="按地区筛选" clearable style="width: 160px">
+        <el-option label="北京" value="北京" />
+        <el-option label="上海" value="上海" />
+        <el-option label="成都" value="成都" />
+        <el-option label="广州" value="广州" />
+        <el-option label="长沙" value="长沙" />
+        <el-option label="泉州" value="泉州" />
+      </el-select>
+
+      <el-select v-model="searchParams.level" placeholder="按景区等级筛选" clearable style="width: 160px">
+        <el-option label="5A景区" value="5A景区" />
+        <el-option label="4A景区" value="4A景区" />
+        <el-option label="3A景区" value="3A景区" />
+      </el-select>
+
+      <el-button type="primary" @click="getScenicList">搜索</el-button>
+      <el-button @click="resetSearch">重置</el-button>
     </div>
 
-    <!-- 数据表格（完全对齐参考图） -->
-    <el-table :data="tableData" border style="width: 100%" @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="40" />
-      <el-table-column prop="name" label="景点名称" min-width="120" show-overflow-tooltip />
+    <div class="toolbar">
+      <el-button type="primary" @click="showAddDialog">新增</el-button>
+      <el-button type="danger" @click="batchDelete" :disabled="!selectedIds.length">删除</el-button>
+    </div>
+
+    <el-table :data="scenicList" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="50" />
+      <el-table-column prop="name" label="景点名称" />
       <el-table-column prop="price" label="票价" width="80" />
-      <el-table-column prop="address" label="所在地" min-width="180" show-overflow-tooltip />
-      <el-table-column prop="region" label="地区" width="150" />
-      <el-table-column prop="popularity" label="热度" width="80">
-        <template #default="{ row }">热度 {{ row.popularity }}</template>
-      </el-table-column>
-      <el-table-column prop="level" label="等级" width="90" />
-      <el-table-column prop="visitCount" label="游量" width="80" />
-      <el-table-column label="图片" width="80">
+
+      <el-table-column label="所在地" min-width="180">
         <template #default="{ row }">
-          <el-image
-              :src="row.imageUrl"
-              style="width: 24px; height: 24px"
-              fit="cover"
-              :preview-src-list="[row.imageUrl]"
-          />
+          <span>
+            {{ row.address
+              ? (row.address.length > 15 ? row.address.slice(0,15)+'...' : row.address)
+              : '暂无'
+            }}
+          </span>
         </template>
       </el-table-column>
-      <el-table-column prop="history" label="文化历史" min-width="200" show-overflow-tooltip />
 
-      <!-- 操作列：已修复图标 -->
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column prop="region" label="地区" />
+      <el-table-column prop="popularity" label="热度" width="80" />
+      <el-table-column prop="level" label="等级" width="100" />
+      <el-table-column prop="visitCount" label="游量" width="80" />
+
+      <el-table-column label="文化历史" min-width="200">
         <template #default="{ row }">
-          <el-button type="text" @click="showDetail(row)">
+          <span>
+            {{ row.history
+              ? (row.history.length > 20 ? row.history.slice(0,20)+'...' : row.history)
+              : '暂无'
+            }}
+          </span>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="图片" width="100">
+        <template #default="{ row }">
+          <el-image :src="row.imageUrl" style="width: 50px; height: 50px" fit="cover" />
+        </template>
+      </el-table-column>
+
+      <el-table-column label="操作" width="120" align="center">
+        <template #default="{ row }">
+          <el-button type="text" size="small" @click="handleView(row)">
             <el-icon><View /></el-icon>
           </el-button>
-          <el-button type="text" @click="showEditDialog(row)">
-            <el-icon><Edit /></el-icon>
+          <el-button type="text" size="small" @click="showEditDialog(row)">
+            <el-icon><Setting /></el-icon>
+          </el-button>
+          <el-button type="text" size="small" @click="handleDelete(row.id)" danger>
+            删除
           </el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <!-- 分页（和参考图一致） -->
     <el-pagination
-        v-model:current-page="page"
-        v-model:page-size="size"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
         :total="total"
-        :page-sizes="[10, 20, 50]"
+        @size-change="getScenicList"
+        @current-change="getScenicList"
         layout="total, prev, pager, next, jumper, ->, sizes"
-        @size-change="getList"
-        @current-change="getList"
-        style="margin-top: 16px; text-align: right;"
+        style="margin-top:20px;text-align:right"
     />
 
     <!-- 新增/编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '修改景点' : '新增景点'" width="600px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑景区' : '新增景区'">
       <el-form :model="form" label-width="100px">
-        <el-form-item label="景点名称" required>
+        <el-form-item label="景点名称">
           <el-input v-model="form.name" />
         </el-form-item>
         <el-form-item label="票价">
@@ -68,7 +106,7 @@
           <el-input v-model="form.address" />
         </el-form-item>
         <el-form-item label="地区">
-          <el-input v-model="form.region" placeholder="如：江苏-南京-玄武区" />
+          <el-input v-model="form.region" />
         </el-form-item>
         <el-form-item label="热度">
           <el-slider v-model="form.popularity" :min="0" :max="1" :step="0.01" />
@@ -80,14 +118,11 @@
             <el-option label="3A景区" value="3A景区" />
           </el-select>
         </el-form-item>
-        <el-form-item label="游量">
-          <el-input-number v-model="form.visitCount" :min="0" />
-        </el-form-item>
-        <el-form-item label="图片URL">
-          <el-input v-model="form.imageUrl" />
+        <el-form-item label="图片链接">
+          <el-input v-model="form.imageUrl" placeholder="输入图片URL" />
         </el-form-item>
         <el-form-item label="文化历史">
-          <el-input type="textarea" v-model="form.history" :rows="3" />
+          <el-input v-model="form.history" type="textarea" :rows="3" placeholder="请输入景区文化历史介绍" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -97,181 +132,177 @@
     </el-dialog>
 
     <!-- 查看详情弹窗 -->
-    <el-dialog v-model="detailVisible" title="景点详情" width="600px">
+    <el-dialog v-model="viewDialogVisible" title="景区详情" width="50%">
       <el-descriptions :column="1" border>
-        <el-descriptions-item label="景点名称">{{ currentDetail.name }}</el-descriptions-item>
-        <el-descriptions-item label="票价">{{ currentDetail.price }} 元</el-descriptions-item>
-        <el-descriptions-item label="所在地">{{ currentDetail.address }}</el-descriptions-item>
-        <el-descriptions-item label="地区">{{ currentDetail.region }}</el-descriptions-item>
-        <el-descriptions-item label="热度">{{ currentDetail.popularity }}</el-descriptions-item>
-        <el-descriptions-item label="等级">{{ currentDetail.level }}</el-descriptions-item>
-        <el-descriptions-item label="游量">{{ currentDetail.visitCount }}</el-descriptions-item>
-        <el-descriptions-item label="文化历史">{{ currentDetail.history }}</el-descriptions-item>
-        <el-descriptions-item label="景点图片">
-          <el-image
-              v-if="currentDetail.imageUrl"
-              :src="currentDetail.imageUrl"
-              style="width: 120px; height: 120px"
-              fit="cover"
-              preview-src-list="[currentDetail.imageUrl]"
-          />
-          <span v-else>暂无图片</span>
-        </el-descriptions-item>
+        <el-descriptions-item label="景点名称">{{ viewForm.name }}</el-descriptions-item>
+        <el-descriptions-item label="票价">{{ viewForm.price }}</el-descriptions-item>
+        <el-descriptions-item label="所在地">{{ viewForm.address || '暂无' }}</el-descriptions-item>
+        <el-descriptions-item label="地区">{{ viewForm.region }}</el-descriptions-item>
+        <el-descriptions-item label="热度">{{ viewForm.popularity }}</el-descriptions-item>
+        <el-descriptions-item label="等级">{{ viewForm.level }}</el-descriptions-item>
+        <el-descriptions-item label="游量">{{ viewForm.visitCount }}</el-descriptions-item>
+        <el-descriptions-item label="文化历史">{{ viewForm.history || '暂无' }}</el-descriptions-item>
       </el-descriptions>
+      <template #footer>
+        <el-button @click="viewDialogVisible = false">关闭</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { View, Edit } from '@element-plus/icons-vue'  // 这里加了图标
+import { View, Setting } from '@element-plus/icons-vue'
 
-const page = ref(1)
-const size = ref(10)
+const scenicList = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
 const total = ref(0)
-const tableData = ref([])
-const selectedRows = ref([])
+const selectedIds = ref([])
 
-// 新增/编辑弹窗
 const dialogVisible = ref(false)
 const isEdit = ref(false)
-const form = reactive({
-  id: null,
+const form = ref({
   name: '',
   price: 0,
   address: '',
   region: '',
-  popularity: 0,
+  popularity: 0.5,
   level: '',
   visitCount: 0,
   imageUrl: '',
   history: ''
 })
 
-// 详情弹窗
-const detailVisible = ref(false)
-const currentDetail = ref({})
+const viewDialogVisible = ref(false)
+const viewForm = ref({})
 
-// 获取列表
-const getList = async () => {
-  const res = await axios.get('http://localhost:8080/scenic/list', {
-    params: { page: page.value, size: size.value }
-  })
-  if (res.data.code === 1) {
-    tableData.value = res.data.data
-    total.value = res.data.total
-  }
-}
+// 🔍 搜索参数
+const searchParams = ref({
+  name: '',
+  region: '',
+  level: ''
+})
 
-// 表格选择变化
-const handleSelectionChange = (val) => {
-  selectedRows.value = val
-}
-
-// 批量删除
-const batchDelete = async () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请先选择要删除的景点')
-    return
-  }
+// 获取列表（带搜索）
+const getScenicList = async () => {
   try {
-    await ElMessageBox.confirm(`确定要删除选中的 ${selectedRows.value.length} 个景点吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    for (const row of selectedRows.value) {
-      await axios.delete(`http://localhost:8080/scenic/delete/${row.id}`)
+    const params = {
+      page: currentPage.value,
+      size: pageSize.value,
+      ...searchParams.value
     }
-    ElMessage.success('批量删除成功')
-    getList()
-  } catch (error) {
-    ElMessage.info('已取消删除')
-  }
-}
+    const res = await axios.get('/admin/scenic/list', { params })
 
-// 单个删除
-const handleDelete = async (row) => {
-  try {
-    await ElMessageBox.confirm('确定要删除该景点吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    const res = await axios.delete(`http://localhost:8080/scenic/delete/${row.id}`)
     if (res.data.code === 1) {
-      ElMessage.success(res.data.msg)
-      getList()
-    } else {
-      ElMessage.error(res.data.msg)
+      // ✅ 修复这里！！！
+      scenicList.value = res.data.data.records
+      total.value = res.data.data.total
     }
-  } catch (error) {
-    ElMessage.info('已取消删除')
+  } catch (err) {
+    ElMessage.error('加载失败：' + err.message)
   }
 }
 
-// 新增弹窗
+// 重置搜索
+const resetSearch = () => {
+  searchParams.value = { name: '', region: '', level: '' }
+  currentPage.value = 1
+  getScenicList()
+}
+
+// 多选
+const handleSelectionChange = (selection) => {
+  selectedIds.value = selection.map(item => item.id)
+}
+
+// 新增
 const showAddDialog = () => {
   isEdit.value = false
-  Object.assign(form, {
-    id: null,
-    name: '',
-    price: 0,
-    address: '',
-    region: '',
-    popularity: 0,
-    level: '',
-    visitCount: 0,
-    imageUrl: '',
-    history: ''
-  })
+  form.value = {
+    name: '', price: 0, address: '', region: '',
+    popularity: 0.5, level: '', visitCount: 0, imageUrl: '', history: ''
+  }
   dialogVisible.value = true
 }
 
-// 编辑弹窗
+// 编辑
 const showEditDialog = (row) => {
   isEdit.value = true
-  Object.assign(form, row)
+  form.value = { ...row }
   dialogVisible.value = true
 }
 
 // 查看详情
-const showDetail = (row) => {
-  currentDetail.value = row
-  detailVisible.value = true
+const handleView = (row) => {
+  viewForm.value = { ...row }
+  viewDialogVisible.value = true
 }
 
-// 提交表单（新增/编辑）
+// 提交
 const submitForm = async () => {
-  const url = isEdit.value ? '/scenic/update' : '/scenic/add'
-  const res = await axios.post(`http://localhost:8080${url}`, form)
-  if (res.data.code === 1) {
-    ElMessage.success(res.data.msg)
-    dialogVisible.value = false
-    getList()
-  } else {
-    ElMessage.error(res.data.msg)
+  try {
+    const url = isEdit.value ? '/admin/scenic/update' : '/admin/scenic/add'
+    const res = await axios.post(url, form.value)
+    if (res.data.code === 1) {
+      ElMessage.success(res.data.msg)
+      dialogVisible.value = false
+      getScenicList()
+    } else {
+      ElMessage.error(res.data.msg)
+    }
+  } catch (err) {
+    ElMessage.error('提交失败')
+  }
+}
+
+// 删除单个
+const handleDelete = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定删除？', '提示', { type: 'warning' })
+    const res = await axios.delete(`/admin/scenic/delete/${id}`)
+    if (res.data.code === 1) {
+      ElMessage.success('删除成功')
+      getScenicList()
+    } else {
+      ElMessage.error(res.data.msg)
+    }
+  } catch {
+    ElMessage.info('已取消')
+  }
+}
+
+// 批量删除
+const batchDelete = async () => {
+  try {
+    await ElMessageBox.confirm('确定删除选中项？')
+    for (const id of selectedIds.value) {
+      await axios.delete(`/admin/scenic/delete/${id}`)
+    }
+    ElMessage.success('批量删除成功')
+    getScenicList()
+  } catch {
+    ElMessage.info('已取消')
   }
 }
 
 onMounted(() => {
-  getList()
+  getScenicList()
 })
 </script>
 
 <style scoped>
 .scenic-manage {
   background: #fff;
-  padding: 16px;
+  padding: 20px;
   border-radius: 4px;
-  max-width: 100%;
 }
-.el-table {
-  font-size: 13px;
+.toolbar {
+  margin-bottom: 20px;
 }
-.el-table th, .el-table td {
-  padding: 8px 0;
+h2 {
+  margin-bottom: 20px;
 }
 </style>

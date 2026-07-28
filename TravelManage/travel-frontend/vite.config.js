@@ -6,17 +6,23 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src') // 配置 @ 指向 src 目录，方便导入
+      '@': resolve(__dirname, 'src')
     }
   },
   server: {
-    port: 5173, // 可自定义端口
+    port: 5173,
     proxy: {
-      // 配置后端接口代理（开发环境跨域用）
-      '/api': {
-        target: 'http://localhost:8080', // 你的后端服务地址
+      // 只代理 /api/... 接口（不匹配 /api，只匹配 /api/xxx）
+      '^/api/': {
+        target: 'http://localhost:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
+      },
+      // 只代理 /admin/... 接口（不匹配 /admin，只匹配 /admin/xxx）
+      '^/admin/[a-z]+/': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => path // 路径不变
       }
     }
   }

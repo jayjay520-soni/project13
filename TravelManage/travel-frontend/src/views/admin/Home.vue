@@ -4,9 +4,9 @@
     <aside class="sidebar">
       <h2 class="logo">一体式旅游管理平台</h2>
       <el-menu
-          default-active="/admin/user"
-          class="menu"
-          router
+          :default-active="activeMenu"
+      class="menu"
+      router
       >
         <el-menu-item index="/admin/user">
           <el-icon><User /></el-icon>
