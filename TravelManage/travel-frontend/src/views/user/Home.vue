@@ -61,7 +61,7 @@
             <div v-for="item in restaurantList" :key="item.id" class="card">
               <div class="card-image">
                 <el-image
-                    :src="item.image_url || ''"
+                    :src="item.imageUrl || ''"
                     fit="cover"
                     @error="handleImageError"
                 >
@@ -99,7 +99,7 @@
             <div v-for="item in homestayList" :key="item.id" class="card">
               <div class="card-image">
                 <el-image
-                    :src="item.image_url || ''"
+                    :src="item.imageUrl || ''"
                     fit="cover"
                     @error="handleImageError"
                 >
@@ -137,7 +137,7 @@
             <div v-for="item in scenicList" :key="item.id" class="card">
               <div class="card-image">
                 <el-image
-                    :src="item.image_url || ''"
+                    :src="item.imageUrl || ''"
                     fit="cover"
                     @error="handleImageError"
                 >
@@ -187,7 +187,7 @@
       <div class="detail-content" v-if="detailData">
         <div class="detail-image">
           <el-image
-              :src="detailData.image_url || ''"
+              :src="detailData.imageUrl || ''"
               style="width:100%;height:280px;object-fit:cover;border-radius:8px"
               fit="cover"
           >
