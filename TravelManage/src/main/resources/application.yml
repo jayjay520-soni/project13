@@ -10,3 +10,6 @@ server:
 
 mybatis:
   type-aliases-package: com.example.travel.entity
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true

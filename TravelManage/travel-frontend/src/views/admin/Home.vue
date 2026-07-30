@@ -5,8 +5,8 @@
       <h2 class="logo">一体式旅游管理平台</h2>
       <el-menu
           :default-active="activeMenu"
-      class="menu"
-      router
+          class="menu"
+          router
       >
         <el-menu-item index="/admin/user">
           <el-icon><User /></el-icon>
@@ -38,7 +38,6 @@
         <div class="user-info">
           <el-avatar size="small" :src="''" />
           <span>{{ username }}</span>
-          <!-- 新增：退出登录按钮 -->
           <el-button type="danger" size="small" @click="handleLogout">退出登录</el-button>
         </div>
       </header>
@@ -50,12 +49,18 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Location, House, Dish, ChatRound } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
+
+// 自动同步当前路由到侧边栏高亮
+const activeMenu = computed(() => {
+  return route.path
+})
 
 // 安全获取用户名
 const username = computed(() => {
@@ -65,9 +70,7 @@ const username = computed(() => {
 // 退出登录逻辑
 const handleLogout = () => {
   ElMessage.success('退出登录成功')
-  // 清空本地存储的登录信息
   localStorage.clear()
-  // 跳转到登录页
   router.push('/login')
 }
 </script>

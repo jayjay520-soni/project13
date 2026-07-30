@@ -26,19 +26,11 @@ public class UserController {
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody User user) {
         Map<String, Object> map = new HashMap<>();
-
         User u = userMapper.findByUsername(user.getUsername());
 
         if (u == null) {
             map.put("code", 0);
-            map.put("msg", "用户名不存在");
-            return map;
-        }
-
-        // 新增：密码非空校验
-        if (user.getPassword() == null || u.getPassword() == null) {
-            map.put("code", 0);
-            map.put("msg", "密码不能为空");
+            map.put("msg", "用户不存在");
             return map;
         }
 
@@ -48,30 +40,21 @@ public class UserController {
             return map;
         }
 
-        // 修复：使用 Objects.equals 避免空指针
-        if (!Objects.equals(user.getRole(), u.getRole())) {
+        // 检查角色是否匹配
+        if (!user.getRole().equals(u.getRole())) {
             map.put("code", 0);
-            map.put("msg", "身份选择错误");
+            map.put("msg", "角色选择错误");
             return map;
         }
 
-        if (u.getStatus() == 0) {
-            map.put("code", 0);
-            map.put("msg", "该账号已被禁用");
-            return map;
-        }
-
-        // 更新登录时间
-        userMapper.updateLastLoginTime(u.getId());
-
-        // ====================== JWT 正式 Token ======================
-        String token = JwtUtil.generateToken(u.getUsername(), u.getRole());
+        // 生成 Token
+        String token = JwtUtil.generateToken(u.getId().toString(), u.getUsername());
 
         map.put("code", 1);
         map.put("msg", "登录成功");
+        map.put("token", token);
         map.put("role", u.getRole());
-        map.put("token", token);   // 前端会自动存储
-
+        map.put("userId", u.getId()); // ✅ 必须返回 userId
         return map;
     }
 

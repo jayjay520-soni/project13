@@ -54,9 +54,7 @@ const loginRules = {
   ]
 }
 
-// ======================================
-// 全局配置 axios 请求拦截器（自动带 Token）
-// ======================================
+// 请求拦截器（自动带 Token）
 axios.interceptors.request.use(config => {
   const token = localStorage.getItem('token')
   if (token) {
@@ -77,10 +75,18 @@ const handleLogin = async () => {
       ElMessage.success('登录成功')
       localStorage.clear()
 
-      // ========== 新增：存储 Token、角色、用户名 ==========
-      localStorage.setItem('token', res.data.token)    // 后端返回的 token
+      // 存储 Token、角色、用户名
+      localStorage.setItem('token', res.data.token)
       localStorage.setItem('userRole', res.data.role)
       localStorage.setItem('username', loginForm.username)
+
+      // ✅ 关键：组装完整 user 对象并存储
+      const userInfo = {
+        id: res.data.userId, // 后端必须返回 userId
+        username: loginForm.username,
+        role: res.data.role
+      }
+      localStorage.setItem('user', JSON.stringify(userInfo))
 
       // 根据角色跳转
       if (res.data.role === 'admin') {

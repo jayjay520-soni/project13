@@ -83,7 +83,7 @@
                   <p><el-icon><Star /></el-icon> 评分：{{ item.score }}</p>
                 </div>
                 <div class="card-footer">
-                  <el-button size="small" type="primary" @click="viewDetail('餐厅', item)">查看详情</el-button>
+                  <el-button size="small" type="primary" @click="viewDetail('餐厅', item, 'restaurant')">查看详情 & 评论</el-button>
                 </div>
               </div>
             </div>
@@ -121,7 +121,7 @@
                   <p><el-icon><Star /></el-icon> 评分：{{ item.score }}</p>
                 </div>
                 <div class="card-footer">
-                  <el-button size="small" type="primary" @click="viewDetail('民宿', item)">查看详情</el-button>
+                  <el-button size="small" type="primary" @click="viewDetail('民宿', item, 'homestay')">查看详情 & 评论</el-button>
                 </div>
               </div>
             </div>
@@ -159,7 +159,7 @@
                   <p><el-icon><User /></el-icon> 游览量：{{ item.visit_count }}</p>
                 </div>
                 <div class="card-footer">
-                  <el-button size="small" type="primary" @click="viewDetail('景区', item)">查看详情</el-button>
+                  <el-button size="small" type="primary" @click="viewDetail('景区', item, 'scenic')">查看详情 & 评论</el-button>
                 </div>
               </div>
             </div>
@@ -182,8 +182,8 @@
       </div>
     </div>
 
-    <!-- 详情弹窗 -->
-    <el-dialog v-model="detailVisible" :title="detailTitle" width="600px">
+    <!-- 详情弹窗 + 评论区 -->
+    <el-dialog v-model="detailVisible" :title="detailTitle" width="780px">
       <div class="detail-content" v-if="detailData">
         <div class="detail-image">
           <el-image
@@ -203,20 +203,17 @@
           <h2>{{ detailData.name }}</h2>
           <p><el-icon><Location /></el-icon> 地址：{{ detailData.address }}</p>
 
-          <!-- 餐厅独有字段 -->
-          <p v-if="currentCategory === 'restaurant'">
+          <p v-if="detailType === 'restaurant'">
             <el-icon><Menu /></el-icon> 菜系：{{ detailData.type }} |
             <el-icon><TrendCharts /></el-icon> 销量：{{ detailData.sales }} |
             <el-icon><Star /></el-icon> 评分：{{ detailData.score }}
           </p>
-          <!-- 民宿独有字段 -->
-          <p v-if="currentCategory === 'homestay'">
+          <p v-if="detailType === 'homestay'">
             <el-icon><House /></el-icon> 类型：{{ detailData.type }} |
             <el-icon><User /></el-icon> 可住：{{ detailData.capacity }}人 |
             <el-icon><Star /></el-icon> 评分：{{ detailData.score }}
           </p>
-          <!-- 景区独有字段 -->
-          <p v-if="currentCategory === 'scenic'">
+          <p v-if="detailType === 'scenic'">
             <el-icon><Medal /></el-icon> 等级：{{ detailData.level }} |
             <el-icon><TrendCharts /></el-icon> 热度：{{ detailData.popularity }} |
             <el-icon><User /></el-icon> 游览量：{{ detailData.visit_count }}
@@ -227,6 +224,46 @@
             <el-icon><Document /></el-icon> 简介：{{ detailData.description || detailData.history || '暂无' }}
           </p>
         </div>
+
+        <!-- ====================== 评论区域 ====================== -->
+        <div class="comment-section" style="margin-top:24px;padding-top:16px;border-top:1px solid #eee">
+          <h3 style="margin-bottom:12px;font-size:16px">用户评论</h3>
+
+          <!-- 评论输入框 -->
+          <el-input
+              v-model="commentContent"
+              type="textarea"
+              :rows="3"
+              placeholder="写下你的评价..."
+              style="margin-bottom:10px"
+          />
+          <el-button type="primary" @click="submitComment" size="small">提交评论</el-button>
+
+          <!-- 评论列表 -->
+          <div class="comment-list" style="margin-top:18px">
+            <div v-for="(c, idx) in commentList" :key="idx" class="comment-item">
+              <div class="comment-header">
+                <span class="username">{{ c.username || c.user?.username || '匿名用户'  }}</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <span class="time">{{ c.createTime }}</span>
+                  <!-- 删除按钮：管理员 或 自己 -->
+                  <el-button
+                      v-if="currentRole === 'admin' || c.userId === currentUserId"
+                      type="danger"
+                      size="small"
+                      @click="deleteComment(c.id)"
+                  >
+                    删除
+                  </el-button>
+                </div>
+              </div>
+              <div class="comment-content">{{ c.content }}</div>
+            </div>
+            <div v-if="commentList.length === 0" style="color:#999;font-size:13px;margin-top:8px">
+              暂无评论，快来发表第一条评论吧～
+            </div>
+          </div>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -236,27 +273,15 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  KnifeFork,
-  House,
-  Location,
-  Picture,
-  Money,
-  Star,
-  User,
-  Menu,
-  TrendCharts,
-  Medal,
-  Document
+  KnifeFork, House, Location, Picture, Money, Star, User, Menu, TrendCharts, Medal, Document
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
 
-// 当前分类
+// 分类
 const currentCategory = ref('restaurant')
-
-// 用户名
 const username = ref('用户')
 
 // 分页
@@ -265,7 +290,7 @@ const pageSize = ref(10)
 const total = ref(0)
 const loading = ref(false)
 
-// 数据列表（字段与数据库完全对齐）
+// 列表
 const restaurantList = ref([])
 const homestayList = ref([])
 const scenicList = ref([])
@@ -274,14 +299,23 @@ const scenicList = ref([])
 const detailVisible = ref(false)
 const detailData = ref(null)
 const detailTitle = ref('')
+const detailType = ref('')
 
-// 获取用户名
+// ====================== 评论相关 ======================
+const commentContent = ref('')
+const commentList = ref([])
+const currentUserId = ref(null)
+const currentRole = ref('user')
+
+// 获取当前登录用户
 const getUsername = () => {
   const userStr = localStorage.getItem('user')
   if (userStr) {
     try {
       const user = JSON.parse(userStr)
       username.value = user.username || user.name || '用户'
+      currentUserId.value = user.id || null
+      currentRole.value = user.role || 'user'
     } catch {
       username.value = '用户'
     }
@@ -302,16 +336,11 @@ const switchCategory = (category) => {
   loadData()
 }
 
-// 加载数据（接口路径与后台管理端保持一致）
-// 加载数据（接口路径与后台管理端保持一致）
+// 加载列表（兼容所有分类结构）
 const loadData = async () => {
   loading.value = true
   try {
-    const params = {
-      page: pageNum.value,
-      size: pageSize.value
-    }
-
+    const params = { page: pageNum.value, size: pageSize.value }
     let url = ''
     let listRef = null
 
@@ -333,37 +362,131 @@ const loadData = async () => {
     }
 
     const res = await axios.get(url, { params })
-    console.log(`${currentCategory.value} 完整数据：`, res.data)
-
     if (res.data.code === 1) {
-      // ✅ 核心修复：兼容多种分页返回格式
       const data = res.data.data || {}
-      listRef.value = data.records || data.list || data || []
-      total.value = data.total || listRef.value.length
-    } else {
-      ElMessage.error(res.data.msg || '加载失败')
+      listRef.value = data.records || (Array.isArray(data) ? data : [])
+      total.value = data.total || res.data.total || listRef.value.length
     }
-  } catch (err) {
-    console.error('加载失败：', err)
-    ElMessage.error('加载数据失败，请稍后重试')
+  } catch (e) {
+    ElMessage.error('加载失败')
+    console.error('加载数据失败', e)
   } finally {
     loading.value = false
   }
 }
 
 // 查看详情
-const viewDetail = (type, item) => {
+const viewDetail = (title, item, type) => {
   detailData.value = item
-  detailTitle.value = `${type}详情`
+  detailTitle.value = `${title}详情`
+  detailType.value = type
   detailVisible.value = true
+  commentContent.value = ''
+  loadComments()
 }
 
-// 图片加载失败处理
+// 加载评论
+const loadComments = async () => {
+  try {
+    const userStr = localStorage.getItem('user')
+    const res = await axios.get('/admin/comment/list', {
+      params: {
+        type: detailType.value,
+        targetId: detailData.value.id,
+        page: 1,
+        size: 100
+      },
+      headers: {
+        user: userStr
+      }
+    })
+    if (res.data && res.data.data && res.data.data.records) {
+      commentList.value = res.data.data.records
+    } else {
+      commentList.value = []
+    }
+  } catch (e) {
+    console.error('加载评论失败', e)
+    commentList.value = []
+  }
+}
+
+// 提交评论
+const submitComment = async () => {
+  const userStr = localStorage.getItem("user");
+  if (!userStr) {
+    ElMessage.warning("请先登录再评论");
+    return;
+  }
+
+  const user = JSON.parse(userStr);
+  if (!user.id) {
+    ElMessage.warning("登录信息异常，请重新登录");
+    return;
+  }
+
+  if (!commentContent.value.trim()) {
+    ElMessage.warning("请输入评论内容");
+    return;
+  }
+
+  const params = {
+    type: detailType.value,
+    targetId: detailData.value.id,
+    content: commentContent.value.trim(),
+    userId: user.id,
+    username: user.username
+  };
+
+  try {
+    const res = await axios.post("/admin/comment/add", params, {
+      headers: {
+        user: userStr
+      }
+    });
+    if (res.data.code === 1) {
+      ElMessage.success("评论成功");
+      commentContent.value = "";
+      loadComments();
+    } else {
+      ElMessage.error(res.data.message || "评论失败");
+    }
+  } catch (err) {
+    console.error(err);
+    ElMessage.error("评论失败，请稍后重试");
+  }
+};
+
+// 删除评论
+const deleteComment = async (id) => {
+  try {
+    await ElMessageBox.confirm('确定要删除这条评论吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
+    const userStr = localStorage.getItem('user')
+    await axios.delete(`/admin/comment/delete/${id}`, {
+      headers: {
+        user: userStr
+      }
+    })
+
+    ElMessage.success('删除成功')
+    loadComments()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e.response?.data?.message || '删除失败')
+    }
+  }
+}
+
+// 图片错误
 const handleImageError = (e) => {
   e.target.src = ''
 }
 
-// 初始化加载
 onMounted(() => {
   getUsername()
   loadData()
@@ -376,7 +499,6 @@ onMounted(() => {
   background: #f0f2f5;
 }
 
-/* 顶部导航 */
 .header {
   background: white;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
@@ -405,7 +527,6 @@ onMounted(() => {
   color: #666;
 }
 
-/* 顶部横幅 */
 .hero-banner {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -423,7 +544,6 @@ onMounted(() => {
   opacity: 0.9;
 }
 
-/* 分类导航 */
 .category-nav {
   background: white;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
@@ -482,14 +602,12 @@ onMounted(() => {
   background: rgba(255,255,255,0.3);
 }
 
-/* 内容区域 */
 .content-area {
   max-width: 1200px;
   margin: 0 auto;
   padding: 24px 20px;
 }
 
-/* 卡片网格 */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -585,12 +703,10 @@ onMounted(() => {
   border-top: 1px solid #f0f0f0;
 }
 
-/* 空状态 */
 .empty-state {
   padding: 40px 0;
 }
 
-/* 分页 */
 .pagination-wrapper {
   display: flex;
   justify-content: flex-end;
@@ -600,7 +716,6 @@ onMounted(() => {
   border-radius: 8px;
 }
 
-/* 详情弹窗 */
 .detail-content {
   padding: 4px 0;
 }
@@ -652,34 +767,51 @@ onMounted(() => {
   color: #666;
 }
 
-/* 响应式 */
+/* 评论样式 */
+.comment-item {
+  padding: 10px 0;
+  border-bottom: 1px dashed #f0f0f0;
+}
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #666;
+}
+.comment-header .username {
+  font-weight: 500;
+  color: #333;
+}
+.comment-header .time {
+  color: #999;
+}
+.comment-content {
+  margin-top: 4px;
+  font-size: 14px;
+  color: #444;
+}
+
 @media (max-width: 768px) {
   .hero-content h1 {
     font-size: 24px;
   }
-
   .hero-content p {
     font-size: 14px;
   }
-
   .category-nav .container {
     gap: 8px;
     padding: 10px 12px;
   }
-
   .nav-item {
     padding: 8px 14px;
     font-size: 13px;
   }
-
   .nav-item .el-icon {
     font-size: 16px;
   }
-
   .card-grid {
     grid-template-columns: 1fr;
   }
-
   .header-content {
     justify-content: center;
   }
