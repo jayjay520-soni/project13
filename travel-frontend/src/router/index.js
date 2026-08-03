@@ -26,9 +26,9 @@ const routes = [
         children: [
             { path: 'user', component: UserManage },   // 用户管理（子路由）
             { path: 'scenic', component: ScenicManage }, // 景区管理（子路由）
-            // 后续可添加民宿/餐厅/评论管理等
             { path: 'restaurant', component: () => import('../views/admin/RestaurantManage.vue') },
-            { path: 'homestay', component: () => import('../views/admin/HomestayManage.vue') }
+            { path: 'homestay', component: () => import('../views/admin/HomestayManage.vue') },
+            { path: 'comment', component: () => import('../views/admin/CommentManage.vue') }  // 评论管理
         ]
     }
 ]

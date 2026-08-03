@@ -119,6 +119,29 @@ CREATE TABLE `restaurant` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='餐厅/美食表';
 
 
+-- =========================================================================
+-- 6. 评论表 comment
+--    字段对应 com.example.travelmanage.entity.Comment
+--    支持对景区、民宿、餐厅的评论与评分
+-- =========================================================================
+DROP TABLE IF EXISTS `comment`;
+CREATE TABLE `comment` (
+                           `id`           INT             NOT NULL AUTO_INCREMENT COMMENT '评论ID',
+                           `user_id`      INT             NOT NULL                COMMENT '评论用户ID（关联user.id）',
+                           `type`         VARCHAR(20)     NOT NULL                COMMENT '评论类型：scenic-景区 / homestay-民宿 / restaurant-餐厅',
+                           `target_id`    INT             NOT NULL                COMMENT '评论对象ID（对应景区/民宿/餐厅表的主键）',
+                           `content`      TEXT            NOT NULL                COMMENT '评论内容',
+                           `score`        INT             NOT NULL DEFAULT 5      COMMENT '评分：1 ~ 5 分',
+                           `create_time`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                           `deleted`      TINYINT         NOT NULL DEFAULT 0      COMMENT '逻辑删除：0-未删除 / 1-已删除',
+                           `username`     VARCHAR(50)              DEFAULT NULL   COMMENT '冗余用户名，便于列表展示',
+                           PRIMARY KEY (`id`),
+                           KEY `idx_user_id`    (`user_id`),
+                           KEY `idx_type_target` (`type`, `target_id`),
+                           KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='评论表（景区/民宿/餐厅）';
+
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================================
